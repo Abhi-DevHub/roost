@@ -1,0 +1,9 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+
+allowBuilds:
+  better-sqlite3: true
+  cpu-features: false
+  esbuild: true
+  ssh2: false
