@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { resolve } from "node:path";
 
 export interface WorktreeInfo {
@@ -33,8 +33,17 @@ function runGit(cwd: string, args: string[]): GitResult {
   };
 }
 
-function normalize(p: string): string {
-  return resolve(p).replace(/[\\/]+$/, "");
+/** Windows paths are case-insensitive and git may report a differently-cased
+ *  or 8.3-short form; realpath + lower-case so path lookups cannot silently miss. */
+function canon(p: string): string {
+  let abs: string;
+  try {
+    abs = realpathSync.native(p);
+  } catch {
+    abs = resolve(p);
+  }
+  abs = abs.replace(/[\\/]+$/, "");
+  return process.platform === "win32" ? abs.toLowerCase() : abs;
 }
 
 /**
@@ -72,8 +81,8 @@ export class WorktreeManager {
    * preserved and reported instead of being lost.
    */
   remove(path: string, opts: { force?: boolean } = {}): RemoveResult {
-    const target = normalize(path);
-    const before = this.list().find((w) => normalize(w.worktree) === target);
+    const target = canon(path);
+    const before = this.list().find((w) => canon(w.worktree) === target);
 
     if (!existsSync(target)) {
       runGit(this.repoDir, ["worktree", "prune"]);
